@@ -1,0 +1,66 @@
+// Pin configuration for the 7-segment display
+int segmentPins[] = {3, 4, 5, 6, 7, 8, 9};  // Segment pins a-g
+int buttonPin = 10;  // Button pin
+int buttonState = 0;  // Current button state
+int lastButtonState = HIGH;  // Last button state (for debouncing)
+unsigned long lastDebounceTime = 0;  // Last time the button state was changed
+unsigned long debounceDelay = 50;  // Debounce delay to prevent multiple triggers
+
+// Patterns for numbers 1 through 6 for a common cathode 7-segment display
+int numberPatterns[6] = {
+  B00000110,  // 1
+  B01011011,  // 2
+  B01001111,  // 3
+  B01100110,  // 4
+  B01101101,  // 5
+  B00111111   // 6
+};
+
+void setup() {
+  // Initialize the 7-segment display pins as OUTPUT
+  for (int i = 0; i < 7; i++) {
+    pinMode(segmentPins[i], OUTPUT);
+  }
+
+  // Initialize the button pin as INPUT
+  pinMode(buttonPin, INPUT_PULLUP);  // Use internal pull-up resistor for the button
+  
+  // Initialize serial communication
+  Serial.begin(9600);
+  
+  // Print initialization message to Serial Monitor
+  Serial.println("Initialization complete!");
+  Serial.println("Press the button to roll the dice...");
+}
+
+void loop() {
+  int reading = digitalRead(buttonPin);  // Read the button state
+
+  // Debugging: Print the button state when it changes
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();  // Reset debounce timer
+    if (reading == LOW) {
+      Serial.println("Button Pressed!");  // Print when button is pressed
+      int randomNumber = random(1, 7);  // Generate a random number between 1 and 6
+      Serial.print("Rolled: ");
+      Serial.println(randomNumber);  // Print the random number to Serial Monitor
+
+      // Display the random number on the 7-segment display
+      displayNumber(numberPatterns[randomNumber - 1]);
+    }
+  }
+
+  // Only change the state if the button has been stable for the debounce delay
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    lastButtonState = reading;  // Save the current button state for the next loop
+  }
+}
+
+// Function to display a number on the 7-segment display
+void displayNumber(int pattern) {
+  // Increase the number to match the 1-6 range
+  for (int i = 0; i < 7; i++) {
+    int segmentState = (pattern >> i) & 1;  // Extract each bit for the segments
+    digitalWrite(segmentPins[i], segmentState);  // Turn each segment on/off
+  }
+}
