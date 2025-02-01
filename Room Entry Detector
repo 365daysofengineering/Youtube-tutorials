@@ -1,0 +1,105 @@
+// Pin definitions
+const int trigPin = 9;
+const int echoPin = 10;
+const int buttonPin = 7;  // Pin connected to the button
+const int ledPin = 13;    // Pin connected to the LED
+
+// Variable to store the distance measurement
+long duration;
+int distance;
+
+// Variable to store the previous distance
+int previousDistance = 0;
+
+// Counter to track when the distance change is greater than or equal to 50 cm
+int count = 0;
+
+// Variable to store the button state
+int buttonState = 0;       
+int lastButtonState = 0;   // Previous state of the button (to detect a change)
+unsigned long lastDebounceTime = 0;  // Last time the button state was toggled
+unsigned long debounceDelay = 50;    // Debounce delay (milliseconds)
+
+void setup() {
+  // Start serial communication
+  Serial.begin(9600);
+  
+  // Set the trigPin as an output and echoPin as an input
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  
+  // Set the buttonPin as an input with internal pull-up resistor
+  pinMode(buttonPin, INPUT_PULLUP);
+  
+  // Set the LED pin as an output
+  pinMode(ledPin, OUTPUT);
+}
+
+void loop() {
+  // Read the state of the button
+  int reading = digitalRead(buttonPin);
+
+  // If the button state has changed, due to noise or debounce
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();  // Reset the debounce timer
+  }
+
+  // Only change the button state if the time since the last debounce is greater than debounceDelay
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      // Only trigger if the new button state is LOW (button pressed)
+      if (buttonState == LOW) {
+        // Blink the LED 'count' number of times
+        for (int i = 0; i < count; i++) {
+          digitalWrite(ledPin, HIGH);  // Turn LED on
+          delay(250);                  // Wait for 250 milliseconds
+          digitalWrite(ledPin, LOW);   // Turn LED off
+          delay(250);                  // Wait for 250 milliseconds
+        }
+      }
+    }
+  }
+
+  // Save the current button state for the next loop iteration
+  lastButtonState = reading;
+
+  // Trigger the ultrasonic sensor for distance measurement
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  // Measure the time for the echo to return
+  duration = pulseIn(echoPin, HIGH);
+  
+  // Calculate the distance (in cm)
+  distance = duration / 58.2;
+
+  // Exclude distances greater than 200 cm or invalid readings
+  if (distance > 200 || distance <= 0) {
+    return;  // Skip invalid readings
+  }
+
+  // Print the distance for debugging
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.print(" cm, Previous Distance: ");
+  Serial.print(previousDistance);
+  Serial.print(" cm, Count: ");
+  Serial.println(count);
+
+  // Check if the distance change is greater than or equal to 50 cm
+  if (abs(distance - previousDistance) >= 50) {
+    count++;  // Increase count if distance change is 50 cm or greater
+    Serial.print("Count incremented! New count: ");
+    Serial.println(count);
+  }
+
+  // Update the previous distance for the next loop iteration
+  previousDistance = distance;
+
+  delay(500);  // Delay to prevent sensor overload
+}
